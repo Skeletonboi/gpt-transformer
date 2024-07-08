@@ -6,3 +6,6 @@ n_vocab : 50257 # num tokens in vocabulary
 n_layer : 12 # num transformer blocks
 n_head : 12 # num heads in multi-head attention
 n_embed : 768 # embedding dimension within attention block
+
+use_flash_attn : False
+use_dropout : False
