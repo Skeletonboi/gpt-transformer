@@ -29,8 +29,8 @@ class MultiHeadAttention(nn.Module):
         self.c_proj = nn.Linear(self.n_embed, self.n_embed)
         # store attn mask as buffer to keep it on GPU 
         self.register_buffer("mask", 
-                             torch.tril(torch.ones(self.head_size, self.head_size))\
-                                .expand(size=(1,1,self.head_size, self.head_size))
+                             torch.tril(torch.ones(self.n_context, self.n_context))\
+                                .expand(size=(1,1,self.n_context, self.n_context))
                              )
         
     def forward(self, x):
@@ -52,7 +52,7 @@ class MultiHeadAttention(nn.Module):
             out = attn @ v # (B,n_head,S,head_size)
         else:
             out = F.scaled_dot_product_attention(q, k, v, is_causal=True) # pytorch built-in flash attention
-        out = out.transpose(1,2).view(B,S,E) # (B,S,n_head,head_size) -> (B,S,E)
+        out = out.transpose(1,2).reshape(B,S,E) # (B,S,n_head,head_size) -> (B,S,E)
         proj_out = self.c_proj(out)
 
         return proj_out
@@ -95,9 +95,10 @@ class TransformerBlock(nn.Module):
         return x
 
 class GPT(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, device=None):
         super().__init__()
         self.config = config
+        self.device = device
         self.n_context = config.get("n_context")
         self.n_vocab = config.get("n_vocab")
         self.n_layer = config.get("n_layer")
@@ -117,7 +118,8 @@ class GPT(nn.Module):
         self.transformer.wte.weight = self.lm_head.weight
     
     def forward(self, x):
-        pos = torch.arange(x.size(1), device=x.device).unsqueeze(0)
+        B, S = x.size() # batch_size, seq_length
+        pos = torch.arange(S, device=x.device).unsqueeze(0)
         x = self.transformer.wpe(pos) + self.transformer.wte(x) 
         if self.use_dropout:
             x = self.drop(x)
@@ -125,11 +127,11 @@ class GPT(nn.Module):
             x = block(x) # transformer blocks
         x = self.transformer.ln_f(x) # layernorm at the end
         x =  self.lm_head(x) # project embd dim to vocab dim as logits
-        return x
+        return x 
     
     # Modified method from Andrej Kaparthy's nanoGPT implementation
     @classmethod
-    def from_pretrained(cls, model_type):
+    def from_pretrained(cls, model_type, device=None):
         """Loads pretrained GPT-2 model weights from huggingface"""
         assert model_type in {'gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl'}
         from transformers import GPT2LMHeadModel
@@ -146,7 +148,7 @@ class GPT(nn.Module):
         config_args['n_context'] = 1024 
         config_args['use_flash_attn'] = False
         # initialize model
-        model = GPT(config_args)
+        model = GPT(config_args, device)
         sd = model.state_dict()
         sd_keys = sd.keys()
         sd_keys = [k for k in sd_keys if not k.endswith('.attn.bias')] # discard this mask / buffer, not a param
@@ -160,8 +162,8 @@ class GPT(nn.Module):
         sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.masked_bias')] # ignore these, just a buffer
         sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.bias')] # same, just the mask (buffer)
         transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
+        print(f"Copying weights...")
         for k in sd_keys_hf:
-            print(k)
             if any(k.endswith(w) for w in transposed):
                 # special treatment for the Conv1D weights we need to transpose
                 assert sd_hf[k].shape[::-1] == sd[k].shape
