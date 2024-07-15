@@ -117,7 +117,7 @@ class GPT(nn.Module):
 
         self.transformer.wte.weight = self.lm_head.weight
     
-    def forward(self, x):
+    def forward(self, x, targets=None):
         B, S = x.size() # batch_size, seq_length
         pos = torch.arange(S, device=x.device).unsqueeze(0)
         x = self.transformer.wpe(pos) + self.transformer.wte(x) 
@@ -127,11 +127,15 @@ class GPT(nn.Module):
             x = block(x) # transformer blocks
         x = self.transformer.ln_f(x) # layernorm at the end
         x =  self.lm_head(x) # project embd dim to vocab dim as logits
-        return x 
+        
+        loss = None
+        if targets is not None:
+            loss = F.cross_entropy(x.view(-1, x.size(-1)), targets.view(-1))
+        return x, loss
     
     # Modified method from Andrej Kaparthy's nanoGPT implementation
     @classmethod
-    def from_pretrained(cls, model_type, device=None):
+    def from_pretrained(cls, model_type, device=None, use_flash_attn=False):
         """Loads pretrained GPT-2 model weights from huggingface"""
         assert model_type in {'gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl'}
         from transformers import GPT2LMHeadModel
@@ -146,7 +150,7 @@ class GPT(nn.Module):
         }[model_type]
         config_args['n_vocab'] = 50257 
         config_args['n_context'] = 1024 
-        config_args['use_flash_attn'] = False
+        config_args['use_flash_attn'] = use_flash_attn
         # initialize model
         model = GPT(config_args, device)
         sd = model.state_dict()
