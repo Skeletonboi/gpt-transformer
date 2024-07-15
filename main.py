@@ -1,12 +1,14 @@
 import torch
 import torch.nn as nn
-from transformer import GPT
 import tiktoken
 import yaml
-from helper_functions import generate_output
 from datasets import load_dataset
+# Custom libraries from scratch
+from transformer import GPT
+from dataloader import SimpleDataLoader
+from helper_functions import generate_output
 
-
+# LOAD CONFIG
 with open("config.yaml") as file:
     try:
         config = yaml.safe_load(file)
@@ -14,22 +16,44 @@ with open("config.yaml") as file:
     except yaml.YAMLError as exc:
         print(exc)
 
+# SET DEVICE
 device = "cpu"
 if torch.cuda.is_available():
     device = "cuda"
+# TOKENIZER
+tokenizer = tiktoken.encoding_for_model('gpt2')
+# LOAD DATA
+dataset_name = "yahma/alpaca-cleaned"
+dataset_name = "GAIR/lima"
+dataset = load_dataset(dataset_name)
+dataloader = SimpleDataLoader(config["batch_size"], config["n_context"], dataset, \
+                                  dataset_name, tokenizer=tokenizer, device=device)
+
+# TRAINING
+epochs = config["epochs"]
+lr = config["lr"]
 
 model = GPT.from_pretrained('gpt2-xl', device, use_flash_attn=True)
 # model = GPT(config)
 model.to(device)
+optimizer = torch.optim.AdamW(model.parameters(), lr=float(lr))
 
-tokenizer = tiktoken.encoding_for_model('gpt2')
-out = generate_output("The purpose of my existence is", model, tokenizer, device, \
-                      gen_length=100, num_samples=5, temp=1.0, top_k=50)
-for b in out:
-    print("---GENERATED TEXT---")
-    print(tokenizer.decode(b.tolist()))
+for i in range(epochs):
+    x, y = dataloader.next_batch()
+    x, y = x.to(device), y.to(device)
+    optimizer.zero_grad()
+    logits, loss = model(x, y)
+    loss.backward()
+    optimizer.step()
 
-# dataset = load_dataset("yahma/alpaca-cleaned")
-# training code
-# model.train()
+test_generate = False
 
+
+
+if test_generate:
+    model.eval()
+    out = generate_output("The purpose of my existence is", model, tokenizer, device, \
+                        gen_length=100, num_samples=5, temp=1.0, top_k=50)
+    for b in out:
+        print("---GENERATED TEXT---")
+        print(tokenizer.decode(b.tolist()))
