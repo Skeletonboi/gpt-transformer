@@ -3,7 +3,6 @@ from tqdm import tqdm
 
 def generate_output(context, model, tokenizer, device, gen_length, num_samples, temp=1, top_k=50):
     """Generate text from a given context using the model."""
-    model.eval()
     n_context = model.config.get("n_context")
     context = tokenizer.encode(context)
     context = torch.tensor(context, dtype=torch.long).repeat(num_samples, 1)
@@ -15,7 +14,7 @@ def generate_output(context, model, tokenizer, device, gen_length, num_samples, 
         num_generated = 0
         while (context_length + num_generated < n_context) and (context_length + num_generated < gen_length):
             with torch.autocast(device_type=device, dtype=torch.bfloat16): # autocast to bfloat16 to save memory
-                logits = model(context)
+                logits, _ = model(context)
             logits = logits[:, -1, :] / temp # adjust logits by temperature
             probs = torch.softmax(logits, dim=1) # to be consistent we softmax first
             probs, idxs = torch.topk(probs, top_k, dim=1) # [B,top_k] matrix
