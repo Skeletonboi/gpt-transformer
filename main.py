@@ -28,17 +28,17 @@ dataset_name = "GAIR/lima"
 dataset = load_dataset(dataset_name)
 dataloader = SimpleDataLoader(config["batch_size"], config["n_context"], dataset, \
                                   dataset_name, tokenizer=tokenizer, device=device)
-
 # TRAINING
-epochs = config["epochs"]
-lr = config["lr"]
+epochs = config["n_epoch"]
+lr = float(config["lr"])
 
-model = GPT.from_pretrained('gpt2-xl', device, use_flash_attn=True)
+model = GPT.from_pretrained('gpt2-large', device, use_flash_attn=True)
 # model = GPT(config)
 model.to(device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=float(lr))
+optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
 for i in range(epochs):
+    print(f"Training epoch {i}...")
     x, y = dataloader.next_batch()
     x, y = x.to(device), y.to(device)
     optimizer.zero_grad()
@@ -46,13 +46,13 @@ for i in range(epochs):
     loss.backward()
     optimizer.step()
 
-test_generate = False
+test_generate = True
 
 
 
 if test_generate:
     model.eval()
-    out = generate_output("The purpose of my existence is", model, tokenizer, device, \
+    out = generate_output("Tell me the purpose of my existence. ", model, tokenizer, device, \
                         gen_length=100, num_samples=5, temp=1.0, top_k=50)
     for b in out:
         print("---GENERATED TEXT---")
