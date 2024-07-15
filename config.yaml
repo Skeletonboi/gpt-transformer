@@ -7,5 +7,8 @@ n_layer : 12 # num transformer blocks
 n_head : 12 # num heads in multi-head attention
 n_embed : 768 # embedding dimension within attention block
 
-use_flash_attn : False
+use_flash_attn : True
 use_dropout : False
+batch_size : 4
+n_epoch : 165 # LIMA ~680k tokens, / (4*1024) = ~165 epochs to see all data once
+lr : 3e-4
