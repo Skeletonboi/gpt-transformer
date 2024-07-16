@@ -29,25 +29,27 @@ dataset = load_dataset(dataset_name)
 dataloader = SimpleDataLoader(config["batch_size"], config["n_context"], dataset, \
                                   dataset_name, tokenizer=tokenizer, device=device)
 # TRAINING
-epochs = config["n_epoch"]
+steps = config["n_steps"]
 lr = float(config["lr"])
 
 model = GPT.from_pretrained('gpt2-large', device, use_flash_attn=True)
 # model = GPT(config)
 model.to(device)
+model = torch.compile(model)
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
-for i in range(epochs):
-    print(f"Training epoch {i}...")
+for i in range(steps):
+    print(f"Training step {i}...")
     x, y = dataloader.next_batch()
     x, y = x.to(device), y.to(device)
     optimizer.zero_grad()
-    logits, loss = model(x, y)
+    with torch.autocast(device_type=device, dtype=torch.bfloat16):
+        logits, loss = model(x, y)
     loss.backward()
     optimizer.step()
 
 test_generate = True
-
+torch.save(model.state_dict(), "./model.pth") 
 
 
 if test_generate:
