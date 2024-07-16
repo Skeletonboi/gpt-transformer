@@ -22,5 +22,7 @@ class LoRALayer(nn.Module):
         self.linear = nn.Linear(in_features, out_features)
         self.lora = LowRankLayer(in_features, out_features, rank, alpha)
 
+        self.linear.weight.requires_grad = False
+
     def forward(self, x):
         return self.linear(x) + self.lora(x)

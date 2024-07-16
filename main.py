@@ -55,7 +55,10 @@ model.to(device)
 import code; code.interact(local=locals())
 if lora_params["use_lora"]:
     replaceWithLoRA(model, lora_params["replaced_modules"], lora_params["lora_rank"], lora_params["lora_alpha"])
-
+    for name, param in model.named_parameters():
+        if not any(target in name for target in lora_params):
+            param.requires_grad_(False)
+            
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
 # TRAIN
