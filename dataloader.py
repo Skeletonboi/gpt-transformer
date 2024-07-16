@@ -4,7 +4,8 @@ import torch
 class SimpleDataLoader:
     """
     Simple DataLoader for instruction-tuning datasets.
-    Uses packed dataloader"""
+    Uses packed dataloading for efficient training.
+    """
     def __init__(self, batch_size, n_context, dataset, dataset_name, tokenizer, device):
         self.batch_size = batch_size
         self.n_context = n_context
@@ -31,7 +32,7 @@ class SimpleDataLoader:
         self.train = torch.tensor(self.train, dtype=int).to(device)
         
     def next_batch(self):
-        if self.current_pos + self.batch_size * self.n_context > self.data_size:
+        if self.current_pos + self.batch_size * self.n_context > self.train.size(0):
             self.current_pos = 0
         x = self.train[self.current_pos : self.current_pos + self.batch_size * self.n_context]
         y = self.train[self.current_pos + 1 : self.current_pos + self.batch_size * self.n_context + 1]
