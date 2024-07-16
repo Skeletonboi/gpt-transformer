@@ -6,7 +6,7 @@ from datasets import load_dataset
 # Custom libraries from scratch
 from transformer import GPT
 from dataloader import SimpleDataLoader
-from helper_functions import generate_output
+from helper_functions import generate_output, replaceWithLoRA
 
 # LOAD CONFIG
 with open("config.yaml") as file:
@@ -28,6 +28,10 @@ test_generate = config["test_generate"]
 batch_size = config["batch_size"]
 n_context = config["n_context"]
 train = config["train"]
+load_model = config["load_model"]
+model_path = config["model_path"]
+pretrained_name = config["pretrained_name"]
+lora_params = config["lora_params"]
 
 # TOKENIZER
 tokenizer = tiktoken.encoding_for_model('gpt2')
@@ -40,10 +44,18 @@ dataloader = SimpleDataLoader(batch_size, n_context, dataset, \
                                   dataset_name, tokenizer=tokenizer, device=device)
 
 # INIT MODEL
-model = GPT.from_pretrained('gpt2-large', device, use_flash_attn=True)
-# model = GPT(config)
+if load_model:
+    model = GPT(config, device)
+    model = torch.compile(model)
+    model.load_state_dict(torch.load(model_path))
+else:
+    model = GPT.from_pretrained(pretrained_name, device, use_flash_attn=True)
+    model = torch.compile(model)
 model.to(device)
-model = torch.compile(model)
+import code; code.interact(local=locals())
+if lora_params["use_lora"]:
+    replaceWithLoRA(model, lora_params["replaced_modules"], lora_params["lora_rank"], lora_params["lora_alpha"])
+
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
 # TRAIN
@@ -58,7 +70,7 @@ if train:
         loss.backward()
         optimizer.step()
 
-torch.save(model.state_dict(), "./model.pth") 
+# torch.save(model.state_dict(), "./model2.pth") 
 
 # GENERATE
 if test_generate:

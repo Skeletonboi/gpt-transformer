@@ -1,8 +1,11 @@
 import torch
 from tqdm import tqdm
+from lora import LoRALayer
 
 def generate_output(context, model, tokenizer, device, gen_length, num_samples, temp=1, top_k=50):
-    """Generate text from a given context using the model."""
+    """
+    Sample model generated text from a given context/input.
+    """
     n_context = model.config.get("n_context")
     context = tokenizer.encode(context)
     context = torch.tensor(context, dtype=torch.long).repeat(num_samples, 1)
@@ -25,3 +28,14 @@ def generate_output(context, model, tokenizer, device, gen_length, num_samples, 
             pbar.update(1)
     pbar.close()
     return context
+
+def replaceWithLoRA(model, replaced_modules, rank, alpha):
+    for name, module in model.named_modules():
+        if len(list(module.children())) > 0:
+            replaceWithLoRA(module, replaced_modules, rank, alpha)
+        elif any(target in name for target in replaced_modules):
+            lora_layer = LoRALayer(module.in_features, module.out_features, rank, alpha)
+            lora_layer.linear.weight.data = module.weight.data
+            parent_module, curr_module = name.rsplit(".", 1)
+            setattr(parent_module, curr_module, lora_layer)
+    return
