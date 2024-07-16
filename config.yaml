@@ -3,12 +3,25 @@
 n_context : 1024 # context length
 n_vocab : 50257 # num tokens in vocabulary
 
-n_layer : 12 # num transformer blocks
-n_head : 12 # num heads in multi-head attention
-n_embed : 768 # embedding dimension within attention block
+n_layer : 36 # num transformer blocks
+n_head : 20 # num heads in multi-head attention
+n_embed : 1280 # embedding dimension within attention block
 
 use_flash_attn : True
 use_dropout : False
 batch_size : 4
-n_epoch : 165 # LIMA ~680k tokens, / (4*1024) = ~165 epochs to see all data once
+n_steps : 165 # LIMA ~680k tokens, / (4*1024) = ~165 epochs to see all data once
 lr : 3e-4
+
+lora_params : {
+  use_lora : True,
+  lora_rank : 4,
+  lora_alpha : 0.5,
+  replaced_modules : ["wte", "c_attn", "c_proj", "c_fc", "lm_head"]
+}
+
+train : False
+test_generate : True
+load_model : True
+model_path : ./model.pth
+pretrained_name : gpt2-large
