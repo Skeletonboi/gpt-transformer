@@ -8,10 +8,68 @@ Future work include implementation of extensions to other PEFT methods such as Q
 Before these, I intend to implement proper benchmarking/evaluation to quantify the improvement from finetuning. 
 
 ## Results
-Current finetuned results using LoRA on gpt2-large base model trained on the Alpaca-52k and LIMA (1k) datasets show promising results.
+Current finetuned results using LoRA on gpt2-large base model trained on the Alpaca-52k and LIMA (1k) datasets show promising results. All training and inference done on a single RTX3080 10GB GPU.
 
-Example output:
+### Example outputs BEFORE LoRA finetuning:
+```
+---PROMPT---
+Provide a numbered list of the 10 largest tech companies.
+---OUTPUT---
 
+
+How much is the tax paid by the technology industry? In the mid-2000s, the largest 1 percent of companies actually paid 14 percent of the corporate income tax; the top 0.01 percent made more than $1.6 trillion from federal taxes in 2014, according to the Tax Policy Center. The bottom 90 percent of companies paid zero corporate income tax, because their taxes were so minimal.
+
+Advertisement
+
+
+Let's look at the 10 biggest tech companies by industry.
+
+Net worth
+
+I'm really not a good judge of value, but since these are the types of lists you're reading, I'd guess that this will be about $12,000,000. This is a big number for companies in industries like health care, which is why the number of tech firms in health care is so astounding.
+```
+```
+---PROMPT---
+Provide a numbered list of the 10 largest tech companies.
+---OUTPUT---
+
+
+The companies could say for whom they provide products or services. Employees at each company could say for whom they work.
+
+The participants in the survey would then be asked: "When in the year 2014, how many of your work colleagues were, or had they been, in the following roles in tech or other fields: Product manager, Developer, QA, Sales, Marketing ...".
+
+The respondents could then say: "What is the percentage of the work of your colleagues and friends who fit into the first category?"
+```
+```
+---PROMPT---
+Provide a numbered list of the 10 largest tech companies.
+---OUTPUT---
+
+
+A few reasons for wanting to change your company's name.
+
+1. It reduces tax headaches.
+
+It's a very big business in the United States, and the US tax code can be a huge hassle. You may have wondered what happens to your corporate profits if you end up changing your name.
+
+The US Treasury Department will require that a change be made, and even if you end up changing it, you still won't receive any tax benefits.
+
+2. It prevents confusion.
+
+The name change can change a person's identity completely. With the changing of the company name, it'll only confuse people even more.
+
+A name change will also have the potential to affect your employees too.
+
+In fact, it's been reported that companies hire people to change their name as well, as it allows them to increase their profits.
+
+3. It's for your employees.
+
+In case you or your employees are planning on the corporate name change, it's usually worth the investment to consider it.
+
+As a result of an employee's name change, it would give employees the opportunity to have a professional address
+```
+
+### Example outputs AFTER LoRA finetuning:
 ```
 ---PROMPT---
 Provide a numbered list of the 10 largest tech companies.
@@ -28,6 +86,8 @@ The 10 largest technology companies in the world are:
 8. Tesla (TSLA) with a market cap of $27 billion
 9. Alibaba (BABA) with a market cap of $21 billion
 10. Facebook (FB) with a market cap of $4.1 billion.
+```
+```
 ---PROMPT---
 Provide a numbered list of the 10 largest tech companies.
 ---OUTPUT---
@@ -41,6 +101,8 @@ Based on a recent report by Reuters, some of the largest technology companies ar
 6. Adobe and Salesforce
 7. Apple
 8. Adobe and Oracle
+```
+```
 ---PROMPT---
 Provide a numbered list of the 10 largest tech companies.
 ---OUTPUT---
@@ -57,3 +119,5 @@ As a AI model, I don't access or access data from the Internet in the way that a
 9. Facebook (a multi-billioning internet company)
 10. Google (a multi-billion-ing internet company)
 ```
+
+Not perfect, but significantly qualitatively better. On a RTX3080, finetuning with LoRA rank=8, alpha=16, takes ~40 minutes.
