@@ -30,6 +30,7 @@ batch_size = config["batch_size"]
 n_context = config["n_context"]
 
 train = config["train"]
+compile = config["compile"]
 pretrained_name = config["pretrained_name"]
 save_model = config["save_model"]
 save_model_path = config["save_model_path"]
@@ -43,7 +44,7 @@ tokenizer = tiktoken.encoding_for_model('gpt2')
 
 # LOAD DATA
 dataset_name = "yahma/alpaca-cleaned"
-dataset_name = "GAIR/lima"
+# dataset_name = "GAIR/lima"
 dataset = load_dataset(dataset_name)
 dataloader = SimpleDataLoader(batch_size, n_context, dataset, \
                                   dataset_name, tokenizer=tokenizer, device=device)
@@ -61,7 +62,8 @@ else:
         applyLoRA(model, lora_params, device)
     model.to(device)
 
-model = torch.compile(model)
+if compile:
+    model = torch.compile(model)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
@@ -85,8 +87,18 @@ if save_model:
 # GENERATE
 if test_generate:
     model.eval()
-    out = generate_output("What is the purpose of existence?", model, tokenizer, device, \
-                        gen_length=100, num_samples=5, temp=1.0, top_k=50)
+    input = "Provide a numbered list of the 10 largest tech companies."
+    out = generate_output(input, model, tokenizer, device, gen_length=250, \
+                          num_samples=5, temp=1.0, top_k=50)
     for b in out:
-        print("---GENERATED TEXT---")
-        print(tokenizer.decode(b.tolist()))
+        b = b.tolist()
+        input_tk_len = len(tokenizer.encode(input))
+        try:
+            end = b.index(tokenizer.eot_token)
+        except:
+            end = len(b)
+        b = b[input_tk_len:end]
+        print("---PROMPT---")
+        print(input)
+        print("---OUTPUT---")
+        print(tokenizer.decode(b))
