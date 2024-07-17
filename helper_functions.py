@@ -30,12 +30,18 @@ def generate_output(context, model, tokenizer, device, gen_length, num_samples, 
     return context
 
 def replaceWithLoRA(model, replaced_modules, rank, alpha):
-    for name, module in model.named_modules():
+    for name, module in model.named_children():
         if len(list(module.children())) > 0:
             replaceWithLoRA(module, replaced_modules, rank, alpha)
         elif any(target in name for target in replaced_modules):
             lora_layer = LoRALayer(module.in_features, module.out_features, rank, alpha)
             lora_layer.linear.weight.data = module.weight.data
-            parent_module, curr_module = name.rsplit(".", 1)
-            setattr(parent_module, curr_module, lora_layer)
+            setattr(model, name, lora_layer)
     return
+
+def applyLoRA(model, lora_params, device):
+    replaceWithLoRA(model, lora_params["replaced_modules"], lora_params["lora_rank"], lora_params["lora_alpha"])
+    for name, param in model.named_parameters():
+        if not any(target in name for target in lora_params["replaced_modules"]):
+            param.requires_grad_(False)
+    
