@@ -13,7 +13,7 @@ class SimpleDataLoader:
 
         self.train = []
         self.raw_train = dataset["train"]
-        self.data_size = len(self.raw_train)
+        self.n_samples = len(self.raw_train)
         self.eos_token = tokenizer.eot_token
         # Handling for different dataset classes from HuggingFace
         if dataset_name == "GAIR/lima":
@@ -24,12 +24,13 @@ class SimpleDataLoader:
             input = self.raw_train["input"]
             output = self.raw_train["output"]
             instr = self.raw_train["instruction"]
-            for i in range(self.data_size):
-                self.train += ["".join(instr[i]) + "".join(input[i]) + "".join(output[i])]
-                # encode tbd ..
+            for i in range(self.n_samples):
+                sample_str = "".join(instr[i]) + "".join(input[i]) + "".join(output[i])
+                self.train.extend(tokenizer.encode(sample_str)+[self.eos_token])
 
         # Convert to tensor
-        self.train = torch.tensor(self.train, dtype=int).to(device)
+        self.train = torch.tensor(self.train, dtype=int)#.to_device(device) 
+        # removed to try to reduce memory usage, don't need whole dataset on device
         
     def next_batch(self):
         if self.current_pos + self.batch_size * self.n_context + 1 > self.train.size(0):
