@@ -9,19 +9,22 @@ n_embed : 1280 # embedding dimension within attention block
 
 use_flash_attn : True
 use_dropout : False
-batch_size : 4
-n_steps : 165 # LIMA ~680k tokens, / (4*1024) = ~165 epochs to see all data once
+batch_size : 2
+n_steps : 330 # LIMA ~680k tokens, / (4*1024) = ~165 epochs to see all data once
 lr : 3e-4
 
 lora_params : {
   use_lora : True,
   lora_rank : 4,
   lora_alpha : 0.5,
-  replaced_modules : ["wte", "c_attn", "c_proj", "c_fc", "lm_head"]
+  replaced_modules : ["c_attn", "c_proj", "c_fc", "lm_head"]
 }
 
 train : False
-test_generate : True
-load_model : True
-model_path : ./model.pth
+save_model : False
+save_model_path : ./model_lora.pth
 pretrained_name : gpt2-large
+test_generate : True
+
+load_model : True
+load_model_path : ./model_lora.pth
