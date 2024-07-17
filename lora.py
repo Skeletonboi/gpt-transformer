@@ -4,7 +4,7 @@ import torch.nn as nn
 class LowRankLayer(nn.Module):
     def __init__(self, in_features, out_features, rank, alpha):
         super().__init__()
-        self.scale = self.alpha/self.rank
+        self.scale = alpha/rank
         
         self.A = nn.Linear(in_features, rank, bias=False)
         self.B = nn.Linear(rank, out_features, bias=False)
