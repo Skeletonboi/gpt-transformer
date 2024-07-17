@@ -32,7 +32,7 @@ class SimpleDataLoader:
         self.train = torch.tensor(self.train, dtype=int).to(device)
         
     def next_batch(self):
-        if self.current_pos + self.batch_size * self.n_context > self.train.size(0):
+        if self.current_pos + self.batch_size * self.n_context + 1 > self.train.size(0):
             self.current_pos = 0
         x = self.train[self.current_pos : self.current_pos + self.batch_size * self.n_context]
         y = self.train[self.current_pos + 1 : self.current_pos + self.batch_size * self.n_context + 1]
