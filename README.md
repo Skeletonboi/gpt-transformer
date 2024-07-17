@@ -11,7 +11,7 @@ Current finetuned results using LoRA on gpt2-large base model trained on the Alp
 
 Example output:
 
-'''
+```
 ---PROMPT---
 Provide a numbered list of the 10 largest tech companies.
 ---OUTPUT---
@@ -55,4 +55,4 @@ As a AI model, I don't access or access data from the Internet in the way that a
 8. Netflix (a multi-billion-selling internet company)
 9. Facebook (a multi-billioning internet company)
 10. Google (a multi-billion-ing internet company)
-'''
+```
