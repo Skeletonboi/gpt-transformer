@@ -39,7 +39,7 @@ def replaceWithLoRA(model, replaced_modules, rank, alpha):
             setattr(model, name, lora_layer)
     return
 
-def applyLoRA(model, lora_params, device):
+def applyLoRA(model, lora_params):
     replaceWithLoRA(model, lora_params["replaced_modules"], lora_params["lora_rank"], lora_params["lora_alpha"])
     for name, param in model.named_parameters():
         if not any(target in name for target in lora_params["replaced_modules"]):
