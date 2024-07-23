@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import bitsandbytes as bnb
 
 class LowRankLayer(nn.Module):
     def __init__(self, in_features, out_features, rank, alpha):
@@ -15,11 +16,21 @@ class LowRankLayer(nn.Module):
     def forward(self, x):
         return self.B(self.A(x)) * self.scale
 
-
 class LoRALayer(nn.Module):
-    def __init__(self, in_features, out_features, rank, alpha):
+    def __init__(self, in_features, out_features, rank, alpha, bias=True):
         super().__init__()
-        self.linear = nn.Linear(in_features, out_features)
+        self.linear = nn.Linear(in_features, out_features, bias=bias)
+        self.lora = LowRankLayer(in_features, out_features, rank, alpha)
+
+        self.linear.weight.requires_grad = False
+
+    def forward(self, x):
+        return self.linear(x) + self.lora(x)
+
+class QLoRALayer(nn.Module):
+    def __init__(self, in_features, out_features, rank, alpha, bias=True):
+        super().__init__()
+        self.linear = bnb.nn.Linear8bitLt(in_features, out_features, bias=bias)
         self.lora = LowRankLayer(in_features, out_features, rank, alpha)
 
         self.linear.weight.requires_grad = False

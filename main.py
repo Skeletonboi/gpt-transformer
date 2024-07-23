@@ -4,6 +4,7 @@ import tiktoken
 import yaml
 from tqdm import tqdm
 from datasets import load_dataset
+import bitsandbytes as bnb
 # Custom libraries from scratch
 from transformer import GPT
 from dataloader import SimpleDataLoader
@@ -53,19 +54,23 @@ dataloader = SimpleDataLoader(batch_size, n_context, dataset, \
 if load_model:
     model = GPT(config, device)
     if lora_params["use_lora"]:
-        applyLoRA(model, lora_params, device)
+        applyLoRA(model, lora_params)
     model.to(device)
     model.load_state_dict(torch.load(load_model_path))
 else:
     model = GPT.from_pretrained(pretrained_name, device, use_flash_attn=True)
     if lora_params["use_lora"]:
-        applyLoRA(model, lora_params, device)
+        applyLoRA(model, lora_params)
     model.to(device)
 
 if compile:
+    print("Compiling model...")
     model = torch.compile(model)
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+if lora_params["quantize"]:
+    optimizer = bnb.optim.AdamW8bit(model.parameters(), lr=lr)
+else:
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
 # TRAIN
 if train:

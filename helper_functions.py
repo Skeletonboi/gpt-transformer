@@ -1,6 +1,6 @@
 import torch
 from tqdm import tqdm
-from lora import LoRALayer
+from lora import LoRALayer, QLoRALayer
 
 def generate_output(context, model, tokenizer, device, gen_length, num_samples, temp=1, top_k=50):
     """
@@ -29,18 +29,29 @@ def generate_output(context, model, tokenizer, device, gen_length, num_samples, 
     pbar.close()
     return context
 
-def replaceWithLoRA(model, replaced_modules, rank, alpha):
+def replaceWithLoRA(model, replaced_modules, rank, alpha, quantize=False):
     for name, module in model.named_children():
         if len(list(module.children())) > 0:
             replaceWithLoRA(module, replaced_modules, rank, alpha)
         elif any(target in name for target in replaced_modules):
-            lora_layer = LoRALayer(module.in_features, module.out_features, rank, alpha)
-            lora_layer.linear.weight.data = module.weight.data
+            if not quantize:
+                lora_layer = LoRALayer(module.in_features, module.out_features, rank, alpha, \
+                                       bias=module.bias is not None)
+                lora_layer.linear.weight.data = module.weight.data
+                if module.bias is not None:
+                    lora_layer.linear.bias.data = module.bias.data
+            else:
+                lora_layer = QLoRALayer(module.in_features, module.out_features, rank, alpha, \
+                                        bias=module.bias is not None)
+                lora_layer.linear.weight.data = module.weight.data.to(torch.int8)
+                if module.bias is not None:
+                    lora_layer.linear.bias.data = module.bias.data.to(torch.int8)
             setattr(model, name, lora_layer)
     return
 
 def applyLoRA(model, lora_params):
-    replaceWithLoRA(model, lora_params["replaced_modules"], lora_params["lora_rank"], lora_params["lora_alpha"])
+    replaceWithLoRA(model, lora_params["replaced_modules"], lora_params["lora_rank"], lora_params["lora_alpha"], lora_params["quantize"])
+    # Freeze any weights that have not been replaced with LoRA
     for name, param in model.named_parameters():
         if not any(target in name for target in lora_params["replaced_modules"]):
             param.requires_grad_(False)
