@@ -30,7 +30,7 @@ class LoRALayer(nn.Module):
 class QLoRALayer(nn.Module):
     def __init__(self, in_features, out_features, rank, alpha, bias=True):
         super().__init__()
-        self.linear = bnb.nn.Linear8bitLt(in_features, out_features, bias=bias)
+        self.linear = bnb.nn.LinearNF4(in_features, out_features, bias=bias)
         self.lora = LowRankLayer(in_features, out_features, rank, alpha)
 
         self.linear.weight.requires_grad = False

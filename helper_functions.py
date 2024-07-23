@@ -32,26 +32,24 @@ def generate_output(context, model, tokenizer, device, gen_length, num_samples, 
 def replaceWithLoRA(model, replaced_modules, rank, alpha, quantize=False):
     for name, module in model.named_children():
         if len(list(module.children())) > 0:
-            replaceWithLoRA(module, replaced_modules, rank, alpha)
+            replaceWithLoRA(module, replaced_modules, rank, alpha, quantize)
         elif any(target in name for target in replaced_modules):
             if not quantize:
                 lora_layer = LoRALayer(module.in_features, module.out_features, rank, alpha, \
                                        bias=module.bias is not None)
-                lora_layer.linear.weight.data = module.weight.data
-                if module.bias is not None:
-                    lora_layer.linear.bias.data = module.bias.data
+                lora_layer.linear.load_state_dict(module.state_dict())
+                lora_layer.linear.weight.requires_grad = False
             else:
                 lora_layer = QLoRALayer(module.in_features, module.out_features, rank, alpha, \
                                         bias=module.bias is not None)
-                lora_layer.linear.weight.data = module.weight.data.to(torch.int8)
-                if module.bias is not None:
-                    lora_layer.linear.bias.data = module.bias.data.to(torch.int8)
+                lora_layer.linear.load_state_dict(module.state_dict())
+                lora_layer.linear.weight.requires_grad = False
             setattr(model, name, lora_layer)
     return
 
 def applyLoRA(model, lora_params):
     replaceWithLoRA(model, lora_params["replaced_modules"], lora_params["lora_rank"], lora_params["lora_alpha"], lora_params["quantize"])
-    # Freeze any weights that have not been replaced with LoRA
+    # Freeze any weights that are not already frozen by LoRA
     for name, param in model.named_parameters():
         if not any(target in name for target in lora_params["replaced_modules"]):
             param.requires_grad_(False)
