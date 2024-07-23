@@ -5,7 +5,10 @@ import yaml
 from tqdm import tqdm
 from datasets import load_dataset
 import bitsandbytes as bnb
-# Custom libraries from scratch
+# Inference w/ a compiled LoRA model raises torch._dynamo errors for some reason, this suppresses them
+import torch._dynamo
+torch._dynamo.config.suppress_errors = True
+# Custom written libraries
 from transformer import GPT
 from dataloader import SimpleDataLoader
 from helper_functions import generate_output, applyLoRA
@@ -55,8 +58,8 @@ if load_model:
     model = GPT(config, device)
     if lora_params["use_lora"]:
         applyLoRA(model, lora_params)
-    model.to(device)
     model.load_state_dict(torch.load(load_model_path))
+    model.to(device)
 else:
     model = GPT.from_pretrained(pretrained_name, device, use_flash_attn=True)
     if lora_params["use_lora"]:
@@ -68,7 +71,7 @@ if compile:
     model = torch.compile(model)
 
 if lora_params["quantize"]:
-    optimizer = bnb.optim.AdamW8bit(model.parameters(), lr=lr)
+    optimizer = bnb.optim.PagedAdamW8bit(model.parameters(), lr=lr)
 else:
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
@@ -87,7 +90,10 @@ if train:
     pbar.close()
 
 if save_model:
-    torch.save(model._orig_mod.state_dict(), save_model_path) 
+    if config["compile"]:
+        torch.save(model._orig_mod.state_dict(), save_model_path)
+    else:
+        torch.save(model.state_dict(), save_model_path)
 
 # GENERATE
 if test_generate:
