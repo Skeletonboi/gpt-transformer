@@ -135,7 +135,7 @@ class GPT(nn.Module):
     
     # Modified method from Andrej Kaparthy's nanoGPT implementation
     @classmethod
-    def from_pretrained(cls, model_type, device=None, use_flash_attn=False):
+    def from_pretrained(cls, model_type, device=None, use_flash_attn=True):
         """Loads pretrained GPT-2 model weights from huggingface"""
         assert model_type in {'gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl'}
         from transformers import GPT2LMHeadModel

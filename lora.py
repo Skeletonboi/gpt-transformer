@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import bitsandbytes as bnb
 
 class LowRankLayer(nn.Module):
@@ -37,3 +38,23 @@ class QLoRALayer(nn.Module):
 
     def forward(self, x):
         return self.linear(x) + self.lora(x)
+    
+class DoRALayer(nn.Module):
+    """
+    DoRA is an evolution of LoRA which decomposes the original pre-trained weight matrix
+    into a magnitude vector and direction matrix, upon which LoRA is applied to the direction matrix.
+    The low-rank matrices and the magnitude vector are then jointly trained/fintuned.
+    """
+    def __init__(self, module, rank, alpha, bias=True):
+        super().__init__()
+        self.linear = nn.Linear(module.in_features, module.out_features, bias=bias)
+        self.lora = LowRankLayer(module.in_features, module.out_features, rank, alpha)
+        self.magnitude = nn.Parameter(module.weight.norm(p=2, dim=0, keepdim=True), requires_grad=True)
+
+        self.linear.weight.requires_grad = False
+
+    def forward(self, x):
+        merged_weights = self.linear.weight + (self.lora.B.weight @ self.lora.A.weight) * self.lora.scale
+        merged_weights = merged_weights / merged_weights.norm(p=2, dim=0, keepdim=True)
+        merged_weights = self.magnitude * merged_weights
+        return  F.linear(x, merged_weights, bias=self.linear.bias)
