@@ -50,8 +50,9 @@ tokenizer = tiktoken.encoding_for_model('gpt2')
 dataset_name = "yahma/alpaca-cleaned"
 # dataset_name = "GAIR/lima"
 dataset = load_dataset(dataset_name)
-dataloader = SimpleDataLoader(batch_size, n_context, dataset, \
-                                  dataset_name, tokenizer=tokenizer, device=device)
+train_loader, test_loader = \
+    SimpleDataLoader.createDataloader(dataset, batch_size, n_context, dataset_name, \
+                                      tokenizer=tokenizer, device=device)
 
 # INIT MODEL
 if load_model:
@@ -66,10 +67,12 @@ else:
         applyLoRA(model, lora_params)
     model.to(device)
 
+# COMPILE MODEL
 if compile:
     print("Compiling model...")
     model = torch.compile(model)
 
+# OPTIMIZER
 if lora_params["quantize"]:
     optimizer = bnb.optim.PagedAdamW8bit(model.parameters(), lr=lr)
 else:
@@ -78,8 +81,9 @@ else:
 # TRAIN
 if train:
     pbar = tqdm(total=n_steps, desc="Beginning training...")
-    for i in range(n_steps):
-        x, y = dataloader.next_batch()
+    model.train()
+    for step in range(n_steps):
+        x, y = train_loader.next_batch()
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
         with torch.autocast(device_type=device, dtype=torch.bfloat16):
@@ -87,8 +91,25 @@ if train:
         loss.backward()
         optimizer.step()
         pbar.update(1)
+
+        # Evaluate test loss
+        if step % 250 == 0:
+            model.eval()
+            test_loader.reset()
+            with torch.no_grad():
+                test_loss = 0
+                for _ in range(100):
+                    x, y = test_loader.next_batch()
+                    x, y = x.to(device), y.to(device)
+                    with torch.autocast(device_type=device, dtype=torch.bfloat16):
+                        _, loss = model(x, y)
+                    test_loss += loss.item()
+                test_loss /= 100
+            model.train()
+            print(f"Test Loss: {test_loss}")
     pbar.close()
 
+# SAVE MODEL
 if save_model:
     if config["compile"]:
         torch.save(model._orig_mod.state_dict(), save_model_path)
