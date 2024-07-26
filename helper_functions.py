@@ -1,6 +1,6 @@
 import torch
 from tqdm import tqdm
-from lora import LoRALayer, QLoRALayer, DoRALayer
+from custom_peft import LoRALayer, QLoRALayer, DoRALayer, QDoRALayer
 
 def generate_output(context, model, tokenizer, device, gen_length, num_samples, temp=1, top_k=50):
     """
@@ -49,7 +49,7 @@ def replaceWithLoRA(model, lora_params):
             elif not quantize and use_dora:
                 peft_layer = DoRALayer(module, rank, alpha, bias=module.bias is not None)
             else:
-             raise Exception("PEFT configuration not yet implemented.")
+                peft_layer = QDoRALayer(module, rank, alpha, bias=module.bias is not None)
             
             peft_layer.linear.load_state_dict(module.state_dict())
             setattr(model, name, peft_layer)
