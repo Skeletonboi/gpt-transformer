@@ -72,7 +72,8 @@ class QDoRALayer(nn.Module):
         self.linear.weight.requires_grad = False
 
     def forward(self, x):
-        merged_weights = self.linear.weight + (self.lora.B.weight @ self.lora.A.weight) * self.lora.scale
+        dequantized_weights = bnb.functional.dequantize_nf4(self.linear.weight, self.linear.weight.quant_state)
+        merged_weights = dequantized_weights + (self.lora.B.weight @ self.lora.A.weight) * self.lora.scale
         merged_weights = merged_weights / merged_weights.norm(p=2, dim=1, keepdim=True)
         merged_weights = self.magnitude * merged_weights
         return  F.linear(x, merged_weights, bias=self.linear.bias)
