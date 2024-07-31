@@ -61,7 +61,8 @@ class DoRALayer(nn.Module):
 
 class QDoRALayer(nn.Module):
     """
-    DoRA with pre-trained linear weights quantized to NF4
+    DoRA with pre-trained linear weights quantized to NF4,
+    manually dequantized for weight-merging.
     """
     def __init__(self, module, rank, alpha, bias=True):
         super().__init__()
@@ -72,8 +73,8 @@ class QDoRALayer(nn.Module):
         self.linear.weight.requires_grad = False
 
     def forward(self, x):
-        dequantized_weights = bnb.functional.dequantize_nf4(self.linear.weight, self.linear.weight.quant_state)
-        merged_weights = dequantized_weights + (self.lora.B.weight @ self.lora.A.weight) * self.lora.scale
+        merged_weights = bnb.functional.dequantize_nf4(self.linear.weight, self.linear.weight.quant_state)
+        merged_weights = merged_weights + (self.lora.B.weight @ self.lora.A.weight) * self.lora.scale
         merged_weights = merged_weights / merged_weights.norm(p=2, dim=1, keepdim=True)
-        merged_weights = self.magnitude * merged_weights
+        merged_weights = merged_weights * self.magnitude
         return  F.linear(x, merged_weights, bias=self.linear.bias)
