@@ -3,7 +3,7 @@ PyTorch implementation and reproduction of the OpenAI GPT-2 architecture + PEFT 
 
 Instruction finetuning is primarily accomplished through LoRA and DoRA, a Parameter Efficient Finetuning (PEFT) method implemented from scratch. Supervised Finetuning (SFT) and/or continued pretraining is also done for experimentation purposes. 
 
-### Task List
+## Task List
 - [x] GPT-2 architecture implementation from PyTorch
 - [x] LoRA adapter implementation
 - [x] DoRA adapter implementation
@@ -20,7 +20,7 @@ Before these, I intend to implement proper benchmarking/evaluation to quantify t
 ## Results
 Current finetuned results using LoRA, QLoRA, and DoRA on gpt2-large and gpt2-medium base models trained on the Alpaca-52k and LIMA (1k) datasets show promising results. All training and inference done on a single RTX3080 10GB GPU. Quantization is performed using the [bitsandbytes](https://github.com/bitsandbytes-foundation/bitsandbytes) library. 
 
-### Example outputs BEFORE LoRA finetuning:
+## Example outputs BEFORE LoRA finetuning:
 ```
 ---PROMPT---
 Provide a numbered list of the 10 largest tech companies.
