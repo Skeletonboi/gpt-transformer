@@ -18,7 +18,7 @@ Future work include implementation of extensions to other PEFT methods such as I
 Before these, I intend to implement proper benchmarking/evaluation to quantify the improvement from finetuning. 
 
 ## Results
-Current finetuned results using LoRA, QLoRA, and DoRA on gpt2-large and gpt2-medium base models trained on the Alpaca-52k and LIMA (1k) datasets show promising results. All training and inference done on a single RTX3080 10GB GPU. Quantization is performed using the [bitsandbytes] (https://github.com/bitsandbytes-foundation/bitsandbytes) library. 
+Current finetuned results using LoRA, QLoRA, and DoRA on gpt2-large and gpt2-medium base models trained on the Alpaca-52k and LIMA (1k) datasets show promising results. All training and inference done on a single RTX3080 10GB GPU. Quantization is performed using the [bitsandbytes](https://github.com/bitsandbytes-foundation/bitsandbytes) library. 
 
 ### Example outputs BEFORE LoRA finetuning:
 ```
