@@ -1,7 +1,9 @@
 # gpt2-peft
-PyTorch implementation and reproduction of the OpenAI GPT-2 architecture + PEFT methods such as LoRA/QLoRA/DoRA/QDoRA (from scratch).
+The goal of this repository is to:
+1) Recreate the original GPT-2 architecture from scratch
+2) Implement PEFT methods [LoRA](https://arxiv.org/abs/2106.09685) and [DoRA](https://arxiv.org/abs/2402.09353) (as well as their quantized versions [QLoRA](https://arxiv.org/abs/2305.14314)/[QDoRA](https://www.answer.ai/posts/2024-04-26-fsdp-qdora-llama3.html)) from scratch (using bnb)
 
-Instruction finetuning is primarily accomplished through LoRA and DoRA, a Parameter Efficient Finetuning (PEFT) method implemented from scratch. Supervised Finetuning (SFT) and/or continued pretraining is also done for experimentation purposes. 
+For comparison and validation purposes, regular Supervised Finetuning (SFT) (or continued pretraining) is also completed.
 
 ## Task List
 - [x] GPT-2 architecture implementation from PyTorch
