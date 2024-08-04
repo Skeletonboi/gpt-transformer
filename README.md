@@ -1,7 +1,7 @@
 # gpt2-peft
 The goal of this repository is to:
 1) Recreate the original GPT-2 architecture from scratch
-2) Implement PEFT methods [LoRA](https://arxiv.org/abs/2106.09685) and [DoRA](https://arxiv.org/abs/2402.09353) (as well as their quantized versions [QLoRA](https://arxiv.org/abs/2305.14314)/[QDoRA](https://www.answer.ai/posts/2024-04-26-fsdp-qdora-llama3.html)) from scratch (using bnb)
+2) Implement PEFT methods [LoRA](https://arxiv.org/abs/2106.09685) and [DoRA](https://arxiv.org/abs/2402.09353) (as well as their quantized versions [QLoRA](https://arxiv.org/abs/2305.14314)/[QDoRA](https://www.answer.ai/posts/2024-04-26-fsdp-qdora-llama3.html)) from scratch (using [bitsnbytes](https://github.com/bitsandbytes-foundation/bitsandbytes))
 
 For comparison and validation purposes, regular Supervised Finetuning (SFT) (or continued pretraining) is also completed.
 
