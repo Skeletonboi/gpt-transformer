@@ -1,4 +1,4 @@
-# gpt2-plus
+# gpt2-peft
 PyTorch implementation and reproduction of the OpenAI GPT-2 architecture + PEFT methods such as LoRA/QLoRA/DoRA/QDoRA (from scratch).
 
 Instruction finetuning is primarily accomplished through LoRA and DoRA, a Parameter Efficient Finetuning (PEFT) method implemented from scratch. Supervised Finetuning (SFT) and/or continued pretraining is also done for experimentation purposes. 
