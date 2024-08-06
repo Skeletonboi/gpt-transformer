@@ -62,7 +62,7 @@ if load_model:
         applyLoRA(model, lora_params)
     model.load_state_dict(torch.load(load_model_path))
 else:
-    model = GPT.from_pretrained(pretrained_name, device, use_flash_attn=True)
+    model = GPT.from_pretrained(pretrained_name, device, use_sdpa=True)
     if lora_params["use_lora"]:
         model.unfuse()
         applyLoRA(model, lora_params)
@@ -74,11 +74,12 @@ if compile:
     model = torch.compile(model)
 
 # OPTIMIZER
+optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+### DEPRECATED OPTIMIZERS FOR NOW, TRAINING SEEMS UNSTABLE UNTIL I FIND OUT WHY ###
 # if lora_params["quantize"]:
     # optimizer = bnb.optim.PagedAdamW8bit(model.parameters(), lr=lr)
 # else:
-# optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-optimizer = bnb.optim.AdamW8bit(model.parameters(), lr=lr)
+#   optimizer = bnb.optim.AdamW8bit(model.parameters(), lr=lr)
 
 # TRAIN
 if train:
@@ -112,7 +113,7 @@ if train:
     pbar.close()
 
 # SAVE MODEL
-if save_model:
+if save_model and not load_model:
     if config["compile"]:
         torch.save(model._orig_mod.state_dict(), save_model_path)
     else:
@@ -121,7 +122,7 @@ if save_model:
 # GENERATE
 if test_generate:
     model.eval()
-    input = "If I have 2 balls and my friend has 3 balls, how many balls do we have in total?"
+    input = "Provide a numbered list of the 10 largest tech companies."
     out = generate_output(input, model, tokenizer, device, gen_length=250, \
                           num_samples=5, temp=1.0, top_k=50)
     for b in out:
