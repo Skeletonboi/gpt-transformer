@@ -21,7 +21,7 @@ class MultiHeadAttention(nn.Module):
         self.n_embed = config.get("n_embed")
         self.n_context = config.get("n_context")
         self.n_head = config.get("n_head")
-        self.use_flash_attn = config.get("use_flash_attn")
+        self.use_sdpa = config.get("use_sdpa")
         self.fused = True
 
         self.head_size = self.n_embed//self.n_head
@@ -43,22 +43,22 @@ class MultiHeadAttention(nn.Module):
         if self.fused:
             qkv = self.c_attn(x)
             q, k, v = qkv.split(self.n_embed, dim=2) # split into BxSxE outputs
-            # split embed dim into (n_head x embd//n_head) for each "head, (B,n_head) are now batch dims
-            q = q.view(B, S, self.n_head, self.head_size).transpose(1,2) # (B,n_head,S,head_size)
-            k = k.view(B, S, self.n_head, self.head_size).transpose(1,2) # (B,n_head,S,head_size)
-            v = v.view(B, S, self.n_head, self.head_size).transpose(1,2) # (B,n_head,S,head_size)
         else:
             q = self.c_attn.q_proj(x)
             k = self.c_attn.k_proj(x)
             v = self.c_attn.v_proj(x)
+        # split embed dim into (n_head x embd//n_head) for each "head, (B,n_head) are now batch dims
+        q = q.view(B, S, self.n_head, self.head_size).transpose(1,2) # (B,n_head,S,head_size)
+        k = k.view(B, S, self.n_head, self.head_size).transpose(1,2) # (B,n_head,S,head_size)
+        v = v.view(B, S, self.n_head, self.head_size).transpose(1,2) # (B,n_head,S,head_size)
 
-        if not self.use_flash_attn:
+        if self.use_sdpa:
+            out = F.scaled_dot_product_attention(q, k, v, is_causal=True) # pytorch built-in flash attention
+        else:
             attn = (q @ k.transpose(2,3))/(math.sqrt(self.head_size)) # (B,n_head,S,S) matrix
             attn = attn.masked_fill(self.mask[:,:,:S,:S] == 0, float('-inf'))
             attn = F.softmax(attn, dim=-1)
-            out = attn @ v # (B,n_head,S,head_size)
-        else:
-            out = F.scaled_dot_product_attention(q, k, v, is_causal=True) # pytorch built-in flash attention
+            out = attn @ v # (B,n_head,S,head_size)            
         out = out.transpose(1,2).reshape(B,S,E) # (B,S,n_head,head_size) -> (B,S,E)
         proj_out = self.c_proj(out)
 
@@ -66,13 +66,18 @@ class MultiHeadAttention(nn.Module):
 
     def unfuse(self):
         self.fused = False
-        w_q, w_k, w_v = self.c_attn.weight.chunk(3, dim=0)
+        w_q, w_k, w_v = self.c_attn.weight.data.chunk(3, dim=0)
+        
+        b_q, b_k, b_v = self.c_attn.bias.data.chunk(3, dim=0)
         self.c_attn = nn.ModuleDict({"q_proj": nn.Linear(self.n_embed, self.n_embed),
                                      "k_proj": nn.Linear(self.n_embed, self.n_embed),
                                      "v_proj": nn.Linear(self.n_embed, self.n_embed)})
-        self.c_attn.q_proj.weight = nn.Parameter(w_q)
-        self.c_attn.k_proj.weight = nn.Parameter(w_k)
-        self.c_attn.v_proj.weight = nn.Parameter(w_v)
+        self.c_attn.q_proj.weight.data = w_q
+        self.c_attn.k_proj.weight.data = w_k
+        self.c_attn.v_proj.weight.data = w_v
+        self.c_attn.q_proj.bias.data = b_q
+        self.c_attn.k_proj.bias.data = b_k
+        self.c_attn.v_proj.bias.data = b_v
         return
 
 class MLP(nn.Module):
@@ -158,7 +163,7 @@ class GPT(nn.Module):
     
     # Modified method from Andrej Kaparthy's nanoGPT implementation
     @classmethod
-    def from_pretrained(cls, model_type, device=None, use_flash_attn=True):
+    def from_pretrained(cls, model_type, device=None, use_sdpa=True):
         """Loads pretrained GPT-2 model weights from huggingface"""
         assert model_type in {'gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl'}
         from transformers import GPT2LMHeadModel
@@ -173,7 +178,7 @@ class GPT(nn.Module):
         }[model_type]
         config_args['n_vocab'] = 50257 
         config_args['n_context'] = 1024 
-        config_args['use_flash_attn'] = use_flash_attn
+        config_args['use_sdpa'] = use_sdpa
         # initialize model
         model = GPT(config_args, device)
         sd = model.state_dict()
