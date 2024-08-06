@@ -7,8 +7,8 @@ For comparison and validation purposes, regular Supervised Finetuning (SFT) (or 
 
 ## Task List
 - [x] GPT-2 architecture implementation from PyTorch
-- [x] LoRA adapter implementation
-- [x] DoRA adapter implementation
+- [x] LoRA adapter implementation (weight defused)
+- [x] DoRA adapter implementation (weight defused)
 - [x] QLoRA implementation (from bnb)
 - [x] QDoRA implementation (from bnb)
 - [ ] [BUG] Quantized model loading
