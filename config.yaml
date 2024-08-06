@@ -3,32 +3,32 @@
 n_context : 1024 # context length
 n_vocab : 50257 # num tokens in vocabulary
 
-n_layer : 36 # num transformer blocks
-n_head : 20 # num heads in multi-head attention
-n_embed : 1280 # embedding dimension within attention block
+n_layer : 24 # num transformer blocks
+n_head : 16 # num heads in multi-head attention
+n_embed : 1024 # embedding dimension within attention block
 
-use_flash_attn : True
+use_sdpa : True # scaled dot-product attention
 use_dropout : False
 batch_size : 2
-n_steps : 330 # LIMA ~680k tokens, Alpaca ~8.59M tokens
+n_steps : 4200 # LIMA ~680k tokens, Alpaca ~8.59M tokens
               # / (2*1024) = ~330 epochs for LIMA, ~4.2k epochs for Alpaca
 lr : 3e-4
 
 lora_params : {
   use_lora : True,
   use_dora : True, # NOTE: LoRA must be true to use DoRA
-  lora_rank : 8,
-  lora_alpha : 16,
-  replaced_modules : ["c_attn", "c_proj", "c_fc", "lm_head"],
+  lora_rank : 16,
+  lora_alpha : 32,
+  replaced_modules : ["q_proj", "k_proj", "v_proj", "c_proj", "c_fc", "lm_head"],
   quantize : False
 }
 
 train : True
 save_model : True
-save_model_path : ./model_dora_lima_1.pth
-pretrained_name : gpt2-large
+save_model_path : ./finetuned_models/gpt2-medium/gpt2m_dora16_alpaca_1.pth
+pretrained_name : gpt2-medium
 test_generate : True
 compile : True # BNB quantization currently does not support torch.compile
 
 load_model : False
-load_model_path : ./model_lora_lima_1_old.pth
+load_model_path : ./finetuned_models/gpt2-medium/gpt2m_dora16_alpaca_1.pth
