@@ -58,11 +58,13 @@ train_loader, test_loader = \
 if load_model:
     model = GPT(config, device)
     if lora_params["use_lora"]:
+        model.unfuse()
         applyLoRA(model, lora_params)
     model.load_state_dict(torch.load(load_model_path))
 else:
     model = GPT.from_pretrained(pretrained_name, device, use_flash_attn=True)
     if lora_params["use_lora"]:
+        model.unfuse()
         applyLoRA(model, lora_params)
 model.to(device)
 

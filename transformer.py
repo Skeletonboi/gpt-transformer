@@ -22,9 +22,11 @@ class MultiHeadAttention(nn.Module):
         self.n_context = config.get("n_context")
         self.n_head = config.get("n_head")
         self.use_flash_attn = config.get("use_flash_attn")
+        self.fused = True
 
         self.head_size = self.n_embed//self.n_head
         # huggingface combines QKV projection matrices into single matrix
+        # this (and swiglu layers, if applicable) need to be unfused for LoRA/DoRA
         self.c_attn = nn.Linear(self.n_embed, 3*self.n_embed) 
         self.c_proj = nn.Linear(self.n_embed, self.n_embed)
         # store attn mask as buffer to keep it on GPU 
@@ -38,12 +40,17 @@ class MultiHeadAttention(nn.Module):
         assert E == self.n_embed
         assert S <= self.n_context
 
-        qkv = self.c_attn(x)
-        q, k, v = qkv.split(self.n_embed, dim=2) # split into BxSxE outputs
-        # split embed dim into (n_head x embd//n_head) for each "head, (B,n_head) are now batch dims
-        q = q.view(B, S, self.n_head, self.head_size).transpose(1,2) # (B,n_head,S,head_size)
-        k = k.view(B, S, self.n_head, self.head_size).transpose(1,2) # (B,n_head,S,head_size)
-        v = v.view(B, S, self.n_head, self.head_size).transpose(1,2) # (B,n_head,S,head_size)
+        if self.fused:
+            qkv = self.c_attn(x)
+            q, k, v = qkv.split(self.n_embed, dim=2) # split into BxSxE outputs
+            # split embed dim into (n_head x embd//n_head) for each "head, (B,n_head) are now batch dims
+            q = q.view(B, S, self.n_head, self.head_size).transpose(1,2) # (B,n_head,S,head_size)
+            k = k.view(B, S, self.n_head, self.head_size).transpose(1,2) # (B,n_head,S,head_size)
+            v = v.view(B, S, self.n_head, self.head_size).transpose(1,2) # (B,n_head,S,head_size)
+        else:
+            q = self.c_attn.q_proj(x)
+            k = self.c_attn.k_proj(x)
+            v = self.c_attn.v_proj(x)
 
         if not self.use_flash_attn:
             attn = (q @ k.transpose(2,3))/(math.sqrt(self.head_size)) # (B,n_head,S,S) matrix
@@ -56,6 +63,17 @@ class MultiHeadAttention(nn.Module):
         proj_out = self.c_proj(out)
 
         return proj_out
+
+    def unfuse(self):
+        self.fused = False
+        w_q, w_k, w_v = self.c_attn.weight.chunk(3, dim=0)
+        self.c_attn = nn.ModuleDict({"q_proj": nn.Linear(self.n_embed, self.n_embed),
+                                     "k_proj": nn.Linear(self.n_embed, self.n_embed),
+                                     "v_proj": nn.Linear(self.n_embed, self.n_embed)})
+        self.c_attn.q_proj.weight = nn.Parameter(w_q)
+        self.c_attn.k_proj.weight = nn.Parameter(w_k)
+        self.c_attn.v_proj.weight = nn.Parameter(w_v)
+        return
 
 class MLP(nn.Module):
     def __init__(self, config):
@@ -132,6 +150,11 @@ class GPT(nn.Module):
         if targets is not None:
             loss = F.cross_entropy(x.view(-1, x.size(-1)), targets.view(-1))
         return x, loss
+
+    def unfuse(self):
+        for block in self.transformer.h:
+            block.attn.unfuse()
+        return
     
     # Modified method from Andrej Kaparthy's nanoGPT implementation
     @classmethod
