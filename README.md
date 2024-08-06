@@ -1,9 +1,14 @@
 # gpt2-peft
-The goal of this repository is to:
-1) Recreate the original GPT-2 architecture from scratch
-2) Implement PEFT methods [LoRA](https://arxiv.org/abs/2106.09685) and [DoRA](https://arxiv.org/abs/2402.09353) (as well as their quantized versions [QLoRA](https://arxiv.org/abs/2305.14314)/[QDoRA](https://www.answer.ai/posts/2024-04-26-fsdp-qdora-llama3.html)) from scratch (using [bitsnbytes](https://github.com/bitsandbytes-foundation/bitsandbytes))
+What this repository demonstrates:
+1) A complete recreation of the original GPT-2 architecture from scratch, weights loaded from HuggingFace
+2) Implemented PEFT methods [LoRA](https://arxiv.org/abs/2106.09685) and [DoRA](https://arxiv.org/abs/2402.09353) (as well as their quantized versions [QLoRA](https://arxiv.org/abs/2305.14314)/[QDoRA](https://www.answer.ai/posts/2024-04-26-fsdp-qdora-llama3.html)) from scratch (using [bitsnbytes](https://github.com/bitsandbytes-foundation/bitsandbytes))
 
-For comparison and validation purposes, regular Supervised Finetuning (SFT) (or continued pretraining) is also completed.
+Various training fixes, optimizations, and inference code are implemented (while keeping true to the original architecture), including but not limited to:
+- SDPA/FA2 usage (using torch scaled_dot_product_attention())
+- Weight Defusion (for LoRA/DoRA adapters)
+- Torch Mixed Precision (using torch.autocast())
+
+For comparison and validation purposes, regular Supervised Finetuning (SFT) (or continued pretraining) is also tested.
 
 ## Task List
 - [x] GPT-2 architecture implementation from PyTorch
@@ -11,13 +16,12 @@ For comparison and validation purposes, regular Supervised Finetuning (SFT) (or 
 - [x] DoRA adapter implementation (weight defused)
 - [x] QLoRA implementation (from bnb)
 - [x] QDoRA implementation (from bnb)
-- [ ] [BUG] Quantized model loading
+- [ ] [BFIX] Bugged loading for quantized model
 - [ ] IA3
 - [ ] Instruction benchmarking
 
 ## Future Work
-Future work include implementation of extensions to other PEFT methods such as IA3, a drop-in interface with other potentially stronger models, as well as prompt engineering techniques such as RAG and usage of a vector database. 
-Before these, I intend to implement proper benchmarking/evaluation to quantify the improvement from finetuning. 
+Future work include implementation of extensions to possibly other PEFT methods such as IA3, proper benchmarking/evaluation to quantify instruction-following ability, and extensions to Transformer++ architectures (i.e. Llama architecture a.k.a RoPE embeddings + SwiGLU + RMS Layernorm + no bias)
 
 ## Results
 Current finetuned results using LoRA, QLoRA, and DoRA on gpt2-large and gpt2-medium base models trained on the Alpaca-52k and LIMA (1k) datasets show promising results. All training and inference done on a single RTX3080 10GB GPU. Quantization is performed using the [bitsandbytes](https://github.com/bitsandbytes-foundation/bitsandbytes) library. 
