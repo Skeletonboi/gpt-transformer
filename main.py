@@ -5,12 +5,13 @@ import yaml
 from tqdm import tqdm
 from datasets import load_dataset
 import bitsandbytes as bnb
+import matplotlib.pyplot as plt
 # Inference w/ a compiled LoRA model raises torch._dynamo errors for some reason, this suppresses them
 import torch._dynamo
 torch._dynamo.config.suppress_errors = True
 # Custom written libraries
 from transformer import GPT
-from dataloader import SimpleDataLoader
+from dataloader import SimpleDataLoader, INSTR_IN_OUT_TEMPLATE
 from helper_functions import generate_output, applyLoRA
 
 # LOAD CONFIG
@@ -47,14 +48,6 @@ lora_params = config["lora_params"]
 # TOKENIZER
 tokenizer = tiktoken.encoding_for_model('gpt2')
 
-# LOAD DATA
-dataset_name = "yahma/alpaca-cleaned"
-# dataset_name = "GAIR/lima"
-dataset = load_dataset(dataset_name)
-train_loader, test_loader = \
-    SimpleDataLoader.createDataloader(dataset, batch_size, n_context, dataset_name, \
-                                      tokenizer, use_template)
-
 # INIT MODEL
 if load_model:
     model = GPT(config, device)
@@ -82,11 +75,19 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 # else:
 #   optimizer = bnb.optim.AdamW8bit(model.parameters(), lr=lr)
 
-# TRAIN
-train_steps = int(train_loader.n_tokens / (batch_size * n_context))
-print(train_steps)
 if train:
-    pbar = tqdm(total=train_steps, desc="Beginning training...")
+    # LOAD DATA
+    dataset_name = "yahma/alpaca-cleaned"
+    # dataset_name = "GAIR/lima"
+    dataset = load_dataset(dataset_name)
+    train_loader, test_loader = \
+        SimpleDataLoader.createDataloader(dataset, batch_size, n_context, dataset_name, \
+                                        tokenizer, use_template)
+    
+    # TRAIN
+    train_steps = int(train_loader.n_tokens / (batch_size * n_context)) * n_epoch
+    store_loss = []
+    pbar = tqdm(total=train_steps)
     model.train()
     for step in range(train_steps):
         x, y = train_loader.next_batch()
@@ -100,21 +101,27 @@ if train:
 
         # Evaluate test loss
         if step % 250 == 0:
+            print("Evaluating ...")
             model.eval()
             test_loader.reset()
             test_steps = int(test_loader.n_tokens / (batch_size * n_context))
             with torch.no_grad():
                 test_loss = 0
-                for _ in range(test_steps):
+                for i in range(test_steps):
                     x, y = test_loader.next_batch()
                     x, y = x.to(device), y.to(device)
                     with torch.autocast(device_type=device, dtype=torch.bfloat16):
                         _, loss = model(x, y)
                     test_loss += loss.item()
                 test_loss /= test_steps
+                store_loss.append(test_loss)
             model.train()
             print(f"Test Loss: {test_loss}")
     pbar.close()
+
+# PLOT TEST LOSS (temp)
+plt.plot(store_loss)
+plt.savefig("test_loss.png")
 
 # SAVE MODEL
 if save_model and not load_model:
@@ -126,7 +133,9 @@ if save_model and not load_model:
 # GENERATE
 if test_generate:
     model.eval()
-    input = "If I have 2 cards in my left hand and 3 cards in my right hand, how many cards do I have in total?"
+    input = INSTR_IN_OUT_TEMPLATE.format("Provide a list of the top 10 tech companies with the largest market cap.","","")
+    input = INSTR_IN_OUT_TEMPLATE.format("Answer the following question correctly. Let's go step-by-step.",
+                                         "If I have 2 cards in my left hand and 3 cards in my right hand, how many cards do I have in total?", "")
     out = generate_output(input, model, tokenizer, device, gen_length=250, \
                           num_samples=5, temp=1.0, top_k=50)
     for b in out:
