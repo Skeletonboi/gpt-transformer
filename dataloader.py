@@ -72,7 +72,6 @@ class SimpleDataLoader:
             raw_train = dataset["train"].select(train_idxs)
             raw_test = dataset["train"].select(test_idxs)
         # Create dataloaders
-        import code; code.interact(local=locals())
         train_loader = SimpleDataLoader(raw_train, batch_size, n_context, dataset_name, tokenizer, use_template)
         test_loader = SimpleDataLoader(raw_test, batch_size, n_context, dataset_name, tokenizer, use_template)
         return train_loader, test_loader
