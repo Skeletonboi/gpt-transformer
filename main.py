@@ -27,8 +27,9 @@ if torch.cuda.is_available():
     device = "cuda"
 
 # CONFIG PARAMS
-n_steps = config["n_steps"]
+n_epoch = config["n_epoch"]
 lr = float(config["lr"])
+use_template = config["use_template"]
 test_generate = config["test_generate"]
 batch_size = config["batch_size"]
 n_context = config["n_context"]
@@ -52,7 +53,7 @@ dataset_name = "yahma/alpaca-cleaned"
 dataset = load_dataset(dataset_name)
 train_loader, test_loader = \
     SimpleDataLoader.createDataloader(dataset, batch_size, n_context, dataset_name, \
-                                      tokenizer=tokenizer, device=device)
+                                      tokenizer, use_template)
 
 # INIT MODEL
 if load_model:
@@ -82,6 +83,7 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 #   optimizer = bnb.optim.AdamW8bit(model.parameters(), lr=lr)
 
 # TRAIN
+n_steps = int(train_loader.n_tokens / (batch_size * n_context))
 if train:
     pbar = tqdm(total=n_steps, desc="Beginning training...")
     model.train()
@@ -122,7 +124,7 @@ if save_model and not load_model:
 # GENERATE
 if test_generate:
     model.eval()
-    input = "Provide a numbered list of the 10 largest tech companies."
+    input = "If I have 2 cards in my left hand and 3 cards in my right hand, how many cards do I have in total?"
     out = generate_output(input, model, tokenizer, device, gen_length=250, \
                           num_samples=5, temp=1.0, top_k=50)
     for b in out:

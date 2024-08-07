@@ -42,6 +42,7 @@ class SimpleDataLoader:
         # Convert to tensor
         self.data = torch.tensor(self.data, dtype=int)#.to_device(device) 
         # removed to try to reduce memory usage, don't need whole dataset on device
+        self.n_tokens = self.data.size()[0] # Record # tokens total in dataset, use to compute n_steps
         
     def next_batch(self):
         if self.current_pos + self.batch_size * self.n_context + 1 > self.data.size(0):
