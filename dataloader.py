@@ -67,9 +67,10 @@ class SimpleDataLoader:
             raw_train = dataset["train"]
             raw_test = dataset["test"]
         else:
-            all_idxs = torch.randperm(len(dataset["train"]))
-            train_idxs = all_idxs[:int(len(dataset["train"])*0.95)]
-            test_idxs = all_idxs[int(len(dataset["train"])*0.95):]
+            n_samples = len(dataset["train"])
+            all_idxs = torch.randperm()
+            train_idxs = all_idxs[:int(n_samples*0.95)]
+            test_idxs = all_idxs[int(n_samples*0.95):]
             raw_train = dataset["train"].select(train_idxs)
             raw_test = dataset["train"].select(test_idxs)
         # Create dataloaders
