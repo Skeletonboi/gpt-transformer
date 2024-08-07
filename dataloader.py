@@ -1,12 +1,21 @@
 import numpy
 import torch
 
+INSTR_IN_OUT_TEMPLATE = """Below is an instruction that describes a task, paired with \
+an input that provides further context. Write a response that appropriately completes the request. 
+
+### Instruction: {}
+
+### Input: {}
+
+### Response: {}"""
+
 class SimpleDataLoader:
     """
     Simple DataLoader for instruction-tuning datasets.
     Uses packed dataloading for efficient training.
     """
-    def __init__(self, raw_data, batch_size, n_context, dataset_name, tokenizer, device):
+    def __init__(self, raw_data, batch_size, n_context, dataset_name, tokenizer, use_template=False):
         self.batch_size = batch_size
         self.n_context = n_context
         self.current_pos = 0
@@ -21,13 +30,15 @@ class SimpleDataLoader:
             self.data.extend(tokenizer.encode(sample) + [self.eos_token] for sample in self.raw_data)
             self.data = [token for sample in self.data for token in sample]
         elif dataset_name == "yahma/alpaca-cleaned":
+            instr = self.raw_data["instruction"]
             input = self.raw_data["input"]
             output = self.raw_data["output"]
-            instr = self.raw_data["instruction"]
             for i in range(self.n_samples):
-                sample_str = "".join(instr[i]) + "".join(input[i]) + "".join(output[i])
+                if use_template:
+                    sample_str = INSTR_IN_OUT_TEMPLATE.format(instr[i], input[i], output[i])
+                else:
+                    sample_str = "".join(instr[i]) + "".join(input[i]) + "".join(output[i])
                 self.data.extend(tokenizer.encode(sample_str)+[self.eos_token])
-
         # Convert to tensor
         self.data = torch.tensor(self.data, dtype=int)#.to_device(device) 
         # removed to try to reduce memory usage, don't need whole dataset on device
@@ -49,7 +60,7 @@ class SimpleDataLoader:
         return
 
     @classmethod
-    def createDataloader(cls,  dataset, batch_size, n_context, dataset_name, tokenizer, device):
+    def createDataloader(cls,  dataset, batch_size, n_context, dataset_name, tokenizer, use_template):
         # Separate train and test sets
         if dataset.get("test", None):
             raw_train = dataset["train"]
@@ -60,6 +71,6 @@ class SimpleDataLoader:
             raw_train = dataset["train"].select(train_idxs)
             raw_test = dataset["train"].select(test_idxs)
         # Create dataloaders
-        train_loader = SimpleDataLoader(raw_train, batch_size, n_context, dataset_name, tokenizer, device)
-        test_loader = SimpleDataLoader(raw_test, batch_size, n_context, dataset_name, tokenizer, device)
+        train_loader = SimpleDataLoader(raw_train, batch_size, n_context, dataset_name, tokenizer, use_template)
+        test_loader = SimpleDataLoader(raw_test, batch_size, n_context, dataset_name, tokenizer, use_template)
         return train_loader, test_loader
