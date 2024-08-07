@@ -83,11 +83,12 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 #   optimizer = bnb.optim.AdamW8bit(model.parameters(), lr=lr)
 
 # TRAIN
-n_steps = int(train_loader.n_tokens / (batch_size * n_context))
+train_steps = int(train_loader.n_tokens / (batch_size * n_context))
+print(train_steps)
 if train:
-    pbar = tqdm(total=n_steps, desc="Beginning training...")
+    pbar = tqdm(total=train_steps, desc="Beginning training...")
     model.train()
-    for step in range(n_steps):
+    for step in range(train_steps):
         x, y = train_loader.next_batch()
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
@@ -101,15 +102,16 @@ if train:
         if step % 250 == 0:
             model.eval()
             test_loader.reset()
+            test_steps = int(test_loader.n_tokens / (batch_size * n_context))
             with torch.no_grad():
                 test_loss = 0
-                for _ in range(100):
+                for _ in range(test_steps):
                     x, y = test_loader.next_batch()
                     x, y = x.to(device), y.to(device)
                     with torch.autocast(device_type=device, dtype=torch.bfloat16):
                         _, loss = model(x, y)
                     test_loss += loss.item()
-                test_loss /= 100
+                test_loss /= test_steps
             model.train()
             print(f"Test Loss: {test_loss}")
     pbar.close()
